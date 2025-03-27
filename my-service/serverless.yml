@@ -1,0 +1,71 @@
+service: my-serverless-project
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ap-south-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:*
+        - kms:*
+        - lambda:InvokeFunction
+      Resource: "*"
+
+functions:
+  getUser:
+    handler: handlers/userHandler.getUser
+    events:
+      - http:
+          path: users/{username}
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - Authorization
+              - X-Requested-With
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:ap-south-1:058264448474:userpool/ap-south-1_4YebdRlsQ
+
+  createUser:
+    handler: handlers/userHandler.createUser
+    events:
+      - http:
+          path: users
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - Authorization
+              - X-Requested-With
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:ap-south-1:058264448474:userpool/ap-south-1_4YebdRlsQ
+
+resources:
+  Resources:
+    UserTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: UserTable
+        AttributeDefinitions:
+          - AttributeName: username  # Changed to match 'getUser' path
+            AttributeType: S
+        KeySchema:
+          - AttributeName: username  # Changed to 'username' for consistency
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+
+    KMSKey:
+      Type: AWS::KMS::Key
+      Properties:
+        Description: Key for encrypting user data
+        EnableKeyRotation: true
+
+plugins:
+  - serverless-offline
